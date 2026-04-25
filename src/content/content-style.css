@@ -4,12 +4,8 @@
   border-radius: 8px;
 }
 
-[data-csh-status="Strong Match"] {
+[data-csh-status="Match"] {
   outline-color: #1f9f53;
-}
-
-[data-csh-status="Possible Match"] {
-  outline-color: #f0a000;
 }
 
 [data-csh-status="Not Match"] {
@@ -30,12 +26,8 @@
   pointer-events: none;
 }
 
-.csh-badge[data-label="Strong Match"] {
+.csh-badge[data-label="Match"] {
   background: #1f9f53;
-}
-
-.csh-badge[data-label="Possible Match"] {
-  background: #e69500;
 }
 
 .csh-badge[data-label="Not Match"] {

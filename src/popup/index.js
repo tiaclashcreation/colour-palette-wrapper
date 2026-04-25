@@ -5,9 +5,8 @@ const seasonSelect = document.getElementById("seasonSelect");
 const scanButton = document.getElementById("scanButton");
 const loadNextButton = document.getElementById("loadNextButton");
 const clearButton = document.getElementById("clearButton");
-const modeStrongButton = document.getElementById("modeStrongButton");
-const modePossibleButton = document.getElementById("modePossibleButton");
-const modeBothButton = document.getElementById("modeBothButton");
+const modeMatchButton = document.getElementById("modeMatchButton");
+const modeAllButton = document.getElementById("modeAllButton");
 const statusText = document.getElementById("statusText");
 const debugLog = document.getElementById("debugLog");
 
@@ -15,11 +14,17 @@ const statScanned = document.getElementById("statScanned");
 const statParsed = document.getElementById("statParsed");
 const statUnparsed = document.getElementById("statUnparsed");
 const statUntracked = document.getElementById("statUntracked");
-const statStrong = document.getElementById("statStrong");
-const statPossible = document.getElementById("statPossible");
+const statMatch = document.getElementById("statMatch");
 const statNoMatch = document.getElementById("statNoMatch");
 const debugEntries = [];
-let currentFilterMode = "both";
+let currentFilterMode = "match";
+
+function normalizeFilterMode(mode) {
+  if (mode === "all") {
+    return "all";
+  }
+  return "match";
+}
 
 function pushDebug(label, value) {
   const timestamp = new Date().toLocaleTimeString();
@@ -47,10 +52,10 @@ function renderSeasons() {
 }
 
 function setFilterModeUi(mode) {
-  currentFilterMode = mode;
-  modeStrongButton.classList.toggle("active", mode === "strong");
-  modePossibleButton.classList.toggle("active", mode === "possible");
-  modeBothButton.classList.toggle("active", mode === "both");
+  const normalizedMode = normalizeFilterMode(mode);
+  currentFilterMode = normalizedMode;
+  modeMatchButton.classList.toggle("active", normalizedMode === "match");
+  modeAllButton.classList.toggle("active", normalizedMode === "all");
 }
 
 function applyStats(stats) {
@@ -58,8 +63,7 @@ function applyStats(stats) {
   statParsed.textContent = String(stats.parsed ?? 0);
   statUnparsed.textContent = String(stats.unparsed ?? 0);
   statUntracked.textContent = String(stats.untracked ?? 0);
-  statStrong.textContent = String(stats.strong ?? 0);
-  statPossible.textContent = String(stats.possible ?? 0);
+  statMatch.textContent = String(stats.match ?? 0);
   statNoMatch.textContent = String(stats.noMatch ?? 0);
   if (stats.unparsedReasons && Object.keys(stats.unparsedReasons).length > 0) {
     pushDebug("Unparsed reasons", stats.unparsedReasons);
@@ -130,7 +134,7 @@ async function initialize() {
   const preferences = await getUserPreferences();
   pushDebug("Preferences loaded", preferences);
   seasonSelect.value = preferences.season ?? DEFAULT_SEASON;
-  setFilterModeUi(preferences.filterMode ?? "both");
+  setFilterModeUi(preferences.filterMode ?? "match");
 
   const statsResponse = await chrome.runtime.sendMessage({ type: "csh:getStats" });
   pushDebug("Background stats response", statsResponse ?? "undefined");
@@ -202,23 +206,23 @@ seasonSelect.addEventListener("change", async () => {
 });
 
 async function updateFilterMode(mode) {
-  setFilterModeUi(mode);
-  await setUserPreferences({ filterMode: mode });
+  const normalizedMode = normalizeFilterMode(mode);
+  setFilterModeUi(normalizedMode);
+  await setUserPreferences({ filterMode: normalizedMode });
   const response = await sendToContent({
     type: "csh:setFilter",
-    payload: { filterMode: mode }
+    payload: { filterMode: normalizedMode }
   });
   if (response?.ok) {
     applyStats(response.stats);
-    pushDebug("Filter mode update success", { mode, stats: response.stats });
+    pushDebug("Filter mode update success", { mode: normalizedMode, stats: response.stats });
     setStatus("Filter mode updated");
   } else {
     pushDebug("Filter mode update failed", response ?? "empty response");
   }
 }
 
-modeStrongButton.addEventListener("click", async () => updateFilterMode("strong"));
-modePossibleButton.addEventListener("click", async () => updateFilterMode("possible"));
-modeBothButton.addEventListener("click", async () => updateFilterMode("both"));
+modeMatchButton.addEventListener("click", async () => updateFilterMode("match"));
+modeAllButton.addEventListener("click", async () => updateFilterMode("all"));
 
 initialize();

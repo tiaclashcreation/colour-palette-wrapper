@@ -325,7 +325,7 @@ function scoreItemForSeason(item, seasonKey) {
   }
 
   const safeScore = Math.max(0, Math.min(100, score));
-  const label = safeScore >= 72 ? "Strong Match" : safeScore >= 48 ? "Possible Match" : "Not Match";
+  const label = safeScore >= 48 ? "Match" : "Not Match";
   const confidence = normalizedColors.length >= 2 ? "high" : normalizedColors.length === 1 ? "medium" : "low";
 
   return {
@@ -409,16 +409,14 @@ function summarizeResults(results) {
   return results.reduce(
     (acc, item) => {
       acc.scanned += 1;
-      if (item.match.label === "Strong Match") {
-        acc.strong += 1;
-      } else if (item.match.label === "Possible Match") {
-        acc.possible += 1;
+      if (item.match.label === "Match") {
+        acc.match += 1;
       } else {
         acc.noMatch += 1;
       }
       return acc;
     },
-    { scanned: 0, strong: 0, possible: 0, noMatch: 0 }
+    { scanned: 0, match: 0, noMatch: 0 }
   );
 }
 
@@ -670,11 +668,11 @@ async function detectDominantColorTokens(imageUrl) {
 
 let currentState = {
   season: DEFAULT_SEASON,
-  filterMode: "both",
+  filterMode: "match",
   isActive: false,
   isBatchLoading: false,
   batchTarget: 100,
-  stats: { scanned: 0, strong: 0, possible: 0, noMatch: 0, parsed: 0, unparsed: 0, untracked: 0, unparsedReasons: {} }
+  stats: { scanned: 0, match: 0, noMatch: 0, parsed: 0, unparsed: 0, untracked: 0, unparsedReasons: {} }
 };
 let observer;
 let interactionHooksBound = false;
@@ -707,14 +705,16 @@ function clearCardDecorations(cardNode) {
 }
 
 function shouldHideByFilterMode(label) {
-  if (currentState.filterMode === "strong") {
-    return label !== "Strong Match";
-  }
-  if (currentState.filterMode === "possible") {
-    return label !== "Possible Match";
-  }
-  if (currentState.filterMode === "both") {
+  if (
+    currentState.filterMode === "match" ||
+    currentState.filterMode === "strong" ||
+    currentState.filterMode === "possible" ||
+    currentState.filterMode === "both"
+  ) {
     return label === "Not Match";
+  }
+  if (currentState.filterMode === "all") {
+    return false;
   }
   return false;
 }
@@ -882,9 +882,8 @@ async function scanAndRender() {
 
 function sortCardsByMatchScore(results) {
   const rank = {
-    "Strong Match": 0,
-    "Possible Match": 1,
-    "Not Match": 2
+    Match: 0,
+    "Not Match": 1
   };
 
   const byParent = new Map();
@@ -1180,8 +1179,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     clearHighlights();
     currentState.stats = {
       scanned: 0,
-      strong: 0,
-      possible: 0,
+      match: 0,
       noMatch: 0,
       parsed: 0,
       unparsed: 0,

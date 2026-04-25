@@ -1,7 +1,6 @@
 import { SEASON_PALETTES } from "./season-palettes.js";
 import { extractNormalizedColors, inferWarmth } from "./color-normalizer.js";
 
-const STRONG_THRESHOLD = 72;
 const POSSIBLE_THRESHOLD = 48;
 const TOKEN_HEX_MAP = {
   coral: "#ff6f61",
@@ -141,12 +140,7 @@ export function scoreItemForSeason(item, seasonKey) {
   }
 
   const safeScore = Math.max(0, Math.min(100, score));
-  const label =
-    safeScore >= STRONG_THRESHOLD
-      ? "Strong Match"
-      : safeScore >= POSSIBLE_THRESHOLD
-        ? "Possible Match"
-        : "Not Match";
+  const label = safeScore >= POSSIBLE_THRESHOLD ? "Match" : "Not Match";
 
   const confidence = normalizedColors.length >= 2 ? "high" : normalizedColors.length === 1 ? "medium" : "low";
 
@@ -281,15 +275,13 @@ export function summarizeResults(results) {
   return results.reduce(
     (acc, item) => {
       acc.scanned += 1;
-      if (item.match.label === "Strong Match") {
-        acc.strong += 1;
-      } else if (item.match.label === "Possible Match") {
-        acc.possible += 1;
+      if (item.match.label === "Match") {
+        acc.match += 1;
       } else {
         acc.noMatch += 1;
       }
       return acc;
     },
-    { scanned: 0, strong: 0, possible: 0, noMatch: 0 }
+    { scanned: 0, match: 0, noMatch: 0 }
   );
 }

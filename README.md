@@ -9,8 +9,7 @@ Chrome extension MVP that scans ASOS product grids, estimates product colours, a
   - metadata-first colour extraction from title + visible swatch text,
   - fallback dominant colour extraction from product image.
 - Match labels on each product card:
-  - `Strong Match`
-  - `Possible Match`
+  - `Match`
   - `Not Match`
 - Toggle to hide non-matching items.
 - Live counters for scanned and matched products.

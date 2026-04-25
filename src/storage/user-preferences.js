@@ -6,7 +6,7 @@ export async function getUserPreferences() {
   const stored = await chrome.storage.sync.get(KEY);
   const defaults = {
     season: DEFAULT_SEASON,
-    filterMode: "both"
+    filterMode: "match"
   };
   return {
     ...defaults,
