@@ -9,7 +9,12 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://www.asos.com/*"
+    "https://*.asos.com/*",
+    "https://*.zara.com/*",
+    "https://*.urbanoutfitters.com/*",
+    "https://*.hm.com/*",
+    "https://*.motelrocks.com/*",
+    "https://*.freepeople.com/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
@@ -33,7 +38,12 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.asos.com/*"
+        "https://*.asos.com/*",
+        "https://*.zara.com/*",
+        "https://*.urbanoutfitters.com/*",
+        "https://*.hm.com/*",
+        "https://*.motelrocks.com/*",
+        "https://*.freepeople.com/*"
       ],
       "js": [
         "src/content/content-script.js"

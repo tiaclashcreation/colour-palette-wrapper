@@ -161,7 +161,110 @@ const COLOR_SYNONYMS = {
 
 const COLOR_TOKEN_SPLIT = /[\s,./|+&()-]+/;
 
-const SELECTORS = {
+const SITE_CONFIGS = {
+  asos: {
+    hosts: ["asos.com"],
+    selectors: {
+      cards: [
+        '[data-auto-id="productTile"]',
+        '[data-testid="productTile"]',
+        '[data-testid*="product-card"]',
+        'article:has(a[href*="/prd/"])',
+        'article:has(a[href*="/product/"])'
+      ],
+      title: [
+        '[data-auto-id="productTileDescription"]',
+        '[data-testid="productDescription"]',
+        'h2',
+        'h3'
+      ],
+      link: ['a[href*="/prd/"]', 'a[href*="/product/"]', "a"],
+      image: ["img"],
+      swatchText: ['[data-auto-id="productTileColour"]', '[data-testid="colourway"]']
+    },
+    productHrefHints: ["/prd/", "/product/"],
+    idAttributes: ["data-id", "data-product-id", "data-productid", "data-articlecode"],
+    titleAttributes: ["data-product-name", "data-name", "aria-label"],
+    colorAttributes: ["data-colour", "data-color", "data-colourway", "data-colorway"]
+  },
+  zara: {
+    hosts: ["zara.com"],
+    selectors: {
+      cards: [
+        '[data-qa-anchor="product-item"]',
+        '[data-productid]',
+        'article:has(a[href*="-p"])',
+        'li:has(a[href*="-p"])'
+      ],
+      title: ['[data-qa-anchor="product-item-name"]', '[data-qa-anchor="product-name"]', "h2", "h3"],
+      link: ['a[href*="-p"]', 'a[href*="/product/"]', "a"],
+      image: ["img"],
+      swatchText: ['[data-qa-anchor="product-item-color-selector"]', '[data-qa-anchor*="color"]']
+    },
+    productHrefHints: ["-p", "/product/"],
+    idAttributes: ["data-productid", "data-product-id", "data-id"],
+    titleAttributes: ["data-name", "data-product-name", "aria-label"],
+    colorAttributes: ["data-color", "data-colour", "data-color-name"]
+  },
+  hm: {
+    hosts: ["hm.com"],
+    selectors: {
+      cards: ['article[data-articlecode]', '[data-testid="product-grid-item"]', "article:has(a[href*=\"/productpage.\"])"],
+      title: ['[class*="ProductTitle"]', '[data-testid="product-item-name"]', "h2", "h3"],
+      link: ['a[href*="/productpage."]', 'a[href*="/product/"]', "a"],
+      image: ["img"],
+      swatchText: ['[class*="ColorName"]', '[data-testid*="color"]']
+    },
+    productHrefHints: ["/productpage.", "/product/"],
+    idAttributes: ["data-articlecode", "data-article-code", "data-product-id", "data-id"],
+    titleAttributes: ["data-name", "data-product-name", "aria-label"],
+    colorAttributes: ["data-color", "data-colour", "data-color-name"]
+  },
+  urbanOutfitters: {
+    hosts: ["urbanoutfitters.com"],
+    selectors: {
+      cards: ['[data-testid="product-tile"]', ".c-product-tile", 'article:has(a[href*="/shop/"])'],
+      title: ['[data-testid="product-name"]', ".c-product-tile__name", "h2", "h3"],
+      link: ['a[href*="/shop/"]', 'a[href*="/products/"]', "a"],
+      image: ["img"],
+      swatchText: ['[data-testid*="color"]', '[class*="swatch"]']
+    },
+    productHrefHints: ["/shop/", "/products/"],
+    idAttributes: ["data-product-id", "data-productid", "data-id"],
+    titleAttributes: ["data-name", "data-product-name", "aria-label"],
+    colorAttributes: ["data-color", "data-colour", "data-color-name"]
+  },
+  motelRocks: {
+    hosts: ["motelrocks.com"],
+    selectors: {
+      cards: ['[data-product-handle]', ".product-item", 'article:has(a[href*="/products/"])', 'li:has(a[href*="/products/"])'],
+      title: ['[class*="product-item__title"]', '[class*="product-card__title"]', "h2", "h3"],
+      link: ['a[href*="/products/"]', "a"],
+      image: ["img"],
+      swatchText: ['[class*="swatch"]', '[class*="colour"]', '[class*="color"]']
+    },
+    productHrefHints: ["/products/"],
+    idAttributes: ["data-product-id", "data-productid", "data-id", "data-product-handle"],
+    titleAttributes: ["data-name", "data-product-name", "aria-label"],
+    colorAttributes: ["data-color", "data-colour", "data-color-name"]
+  },
+  freePeople: {
+    hosts: ["freepeople.com"],
+    selectors: {
+      cards: ['[data-testid="product-tile"]', ".c-product-tile", 'article:has(a[href*="/shop/"])', 'li:has(a[href*="/shop/"])'],
+      title: ['[data-testid="product-name"]', ".c-product-tile__name", '[class*="product-tile__name"]', "h2", "h3"],
+      link: ['a[href*="/shop/"]', 'a[href*="/products/"]', "a"],
+      image: ["img"],
+      swatchText: ['[data-testid*="color"]', '[class*="swatch"]', '[class*="colour"]', '[class*="color"]']
+    },
+    productHrefHints: ["/shop/", "/products/"],
+    idAttributes: ["data-product-id", "data-productid", "data-id"],
+    titleAttributes: ["data-name", "data-product-name", "aria-label"],
+    colorAttributes: ["data-color", "data-colour", "data-color-name"]
+  }
+};
+
+const DEFAULT_SELECTORS = {
   cards: [
     '[data-auto-id="productTile"]',
     '[data-testid="productTile"]',
@@ -179,6 +282,39 @@ const SELECTORS = {
   image: ["img"],
   swatchText: ['[data-auto-id="productTileColour"]', '[data-testid="colourway"]']
 };
+
+function getActiveSiteConfig() {
+  const host = window.location.hostname.toLowerCase();
+  return (
+    Object.values(SITE_CONFIGS).find((config) => config.hosts.some((domain) => host.includes(domain))) ?? {
+      selectors: DEFAULT_SELECTORS,
+      productHrefHints: ["/product/", "/products/", "/prd/", "/shop/"]
+    }
+  );
+}
+
+function getActiveSelectors() {
+  return getActiveSiteConfig().selectors ?? DEFAULT_SELECTORS;
+}
+
+function getAttributeFirst(node, attrs = []) {
+  for (const attr of attrs) {
+    const value = node.getAttribute(attr)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function isLikelyProductHref(href) {
+  if (!href) {
+    return false;
+  }
+  const loweredHref = href.toLowerCase();
+  const { productHrefHints } = getActiveSiteConfig();
+  return productHrefHints.some((hint) => loweredHref.includes(hint.toLowerCase()));
+}
 
 const PALETTE_SWATCHES = [
   { hex: "#000000", token: "black" },
@@ -421,8 +557,9 @@ function summarizeResults(results) {
 }
 
 function getProductCards(documentRef = document) {
+  const selectors = getActiveSelectors();
   const all = [];
-  for (const selector of SELECTORS.cards) {
+  for (const selector of selectors.cards) {
     try {
       all.push(...documentRef.querySelectorAll(selector));
     } catch (_error) {
@@ -432,9 +569,12 @@ function getProductCards(documentRef = document) {
 
   if (all.length === 0) {
     const productLinks = [
-      ...documentRef.querySelectorAll('a[href*="/prd/"], a[href*="/product/"]')
+      ...documentRef.querySelectorAll("a[href]")
     ];
     for (const link of productLinks) {
+      if (!isLikelyProductHref(link.getAttribute("href") ?? link.href ?? "")) {
+        continue;
+      }
       const cardLike = link.closest(
         '[data-auto-id="productTile"], [data-testid="productTile"], [data-testid*="product-card"], li, article, div'
       );
@@ -445,7 +585,15 @@ function getProductCards(documentRef = document) {
   }
 
   const unique = [...new Set(all)];
-  return unique.filter((node) => node.querySelector('a[href*="/prd/"], a[href*="/product/"]'));
+  return unique.filter((node) => {
+    const links = node.querySelectorAll("a[href]");
+    for (const link of links) {
+      if (isLikelyProductHref(link.getAttribute("href") ?? link.href ?? "")) {
+        return true;
+      }
+    }
+    return false;
+  });
 }
 
 function queryFirst(node, selectors) {
@@ -459,23 +607,23 @@ function queryFirst(node, selectors) {
 }
 
 function extractProductData(cardNode) {
-  const titleNode = queryFirst(cardNode, SELECTORS.title);
-  const linkNode = queryFirst(cardNode, SELECTORS.link);
-  const imageNode = queryFirst(cardNode, SELECTORS.image);
-  const swatchNode = queryFirst(cardNode, SELECTORS.swatchText);
+  const site = getActiveSiteConfig();
+  const selectors = getActiveSelectors();
+  const titleNode = queryFirst(cardNode, selectors.title);
+  const linkNode = queryFirst(cardNode, selectors.link);
+  const imageNode = queryFirst(cardNode, selectors.image);
+  const swatchNode = queryFirst(cardNode, selectors.swatchText);
 
   const linkText = linkNode?.textContent?.trim() ?? "";
   const linkAria = linkNode?.getAttribute("aria-label")?.trim() ?? "";
-  const dataName = cardNode.getAttribute("data-product-name")?.trim() ?? "";
+  const dataName = getAttributeFirst(cardNode, site.titleAttributes ?? ["data-product-name"]);
   const imageAlt = imageNode?.alt?.trim() ?? "";
   const title = titleNode?.textContent?.trim() || linkAria || dataName || imageAlt || linkText;
   const url = linkNode?.href ?? "";
-  const id = cardIdFromLink(url) ?? title;
+  const idFromAttrs = getAttributeFirst(cardNode, site.idAttributes ?? []);
+  const id = cardIdFromLink(url) ?? idFromAttrs ?? title;
   const swatchText = swatchNode?.textContent?.trim() ?? "";
-  const colorFromData =
-    cardNode.getAttribute("data-colour")?.trim() ??
-    cardNode.getAttribute("data-color")?.trim() ??
-    "";
+  const colorFromData = getAttributeFirst(cardNode, site.colorAttributes ?? ["data-colour", "data-color"]);
 
   if (!id || !title || !url) {
     return null;
@@ -679,7 +827,10 @@ let observer;
 let interactionHooksBound = false;
 
 function canRun() {
-  return window.location.hostname.includes("asos.com");
+  const host = window.location.hostname.toLowerCase();
+  return ["asos.com", "zara.com", "urbanoutfitters.com", "hm.com", "motelrocks.com", "freepeople.com"].some((domain) =>
+    host.includes(domain)
+  );
 }
 
 function ensureBadge(cardNode, label, confidence) {
@@ -721,15 +872,17 @@ function shouldHideByFilterMode(label) {
 }
 
 function explainParseFailure(cardNode) {
-  const linkNode = queryFirst(cardNode, SELECTORS.link);
+  const site = getActiveSiteConfig();
+  const selectors = getActiveSelectors();
+  const linkNode = queryFirst(cardNode, selectors.link);
   if (!linkNode?.href) {
     return "missing-link";
   }
-  const titleNode = queryFirst(cardNode, SELECTORS.title);
-  const imageNode = queryFirst(cardNode, SELECTORS.image);
+  const titleNode = queryFirst(cardNode, selectors.title);
+  const imageNode = queryFirst(cardNode, selectors.image);
   const linkText = linkNode?.textContent?.trim() ?? "";
   const linkAria = linkNode?.getAttribute("aria-label")?.trim() ?? "";
-  const dataName = cardNode.getAttribute("data-product-name")?.trim() ?? "";
+  const dataName = getAttributeFirst(cardNode, site.titleAttributes ?? ["data-product-name"]);
   const imageAlt = imageNode?.alt?.trim() ?? "";
   const title = titleNode?.textContent?.trim() || linkAria || dataName || imageAlt || linkText;
   if (!title) {
@@ -809,7 +962,9 @@ async function scanAndRender() {
   }
 
   const cards = getProductCards(document);
-  const productLinkCount = document.querySelectorAll('a[href*="/prd/"], a[href*="/product/"]').length;
+  const productLinkCount = [...document.querySelectorAll("a[href]")].filter((link) =>
+    isLikelyProductHref(link.getAttribute("href") ?? link.href ?? "")
+  ).length;
   const results = [];
   const seenProductIds = new Set();
   const unparsedReasons = {};
@@ -1120,8 +1275,7 @@ function emitStats() {
 }
 
 function isProductDetailPage() {
-  const path = window.location.pathname.toLowerCase();
-  return path.includes("/prd/") || path.includes("/product/");
+  return isLikelyProductHref(window.location.pathname.toLowerCase());
 }
 
 async function maybeResumeSessionOnPageLoad() {
