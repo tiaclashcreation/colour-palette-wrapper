@@ -136,7 +136,11 @@ async function initialize() {
   seasonSelect.value = preferences.season ?? DEFAULT_SEASON;
   setFilterModeUi(preferences.filterMode ?? "match");
 
-  const statsResponse = await chrome.runtime.sendMessage({ type: "csh:getStats" });
+  const activeTab = await getActiveTabId();
+  const statsResponse = await chrome.runtime.sendMessage({
+    type: "csh:getStats",
+    payload: { tabId: activeTab?.id ?? null, url: activeTab?.url ?? null }
+  });
   pushDebug("Background stats response", statsResponse ?? "undefined");
   if (statsResponse?.ok) {
     applyStats(statsResponse.stats);

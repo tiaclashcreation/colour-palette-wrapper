@@ -669,6 +669,7 @@ async function detectDominantColorTokens(imageUrl) {
 let currentState = {
   season: DEFAULT_SEASON,
   filterMode: "match",
+  sessionFilterMode: "match",
   isActive: false,
   isBatchLoading: false,
   batchTarget: 100,
@@ -1082,8 +1083,35 @@ function setupInteractionHooks() {
 function emitStats() {
   chrome.runtime.sendMessage({
     type: "csh:stats",
-    payload: currentState.stats
+    payload: {
+      isActive: currentState.isActive,
+      season: currentState.season,
+      filterMode: currentState.sessionFilterMode,
+      stats: currentState.stats
+    }
   });
+}
+
+function isProductDetailPage() {
+  const path = window.location.pathname.toLowerCase();
+  return path.includes("/prd/") || path.includes("/product/");
+}
+
+async function maybeResumeSessionOnPageLoad() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "csh:getSessionState" });
+    if (!response?.ok || !response.session?.isActive) {
+      return;
+    }
+    currentState.isActive = true;
+    currentState.season = response.session.season ?? currentState.season;
+    currentState.sessionFilterMode = response.session.filterMode ?? "match";
+    currentState.filterMode = isProductDetailPage() ? "all" : currentState.sessionFilterMode;
+    await scanAndRender();
+    emitStats();
+  } catch (_error) {
+    // Ignore restore failures; manual scan still works.
+  }
 }
 
 function setupObserver() {
@@ -1106,6 +1134,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     currentState.isActive = true;
     currentState.season = message.payload.season ?? currentState.season;
     currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    currentState.sessionFilterMode = currentState.filterMode;
     scanAndRender().then((stats) => {
       emitStats();
       sendResponse({ ok: true, stats });
@@ -1117,6 +1146,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     currentState.isActive = true;
     currentState.season = message.payload.season ?? currentState.season;
     currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    currentState.sessionFilterMode = currentState.filterMode;
     const batchSize = Number(message.payload.batchSize) || 100;
     currentState.batchTarget = batchSize;
     currentState.isBatchLoading = true;
@@ -1142,6 +1172,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     currentState.season = message.payload.season ?? currentState.season;
     currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    currentState.sessionFilterMode = currentState.filterMode;
     currentState.batchTarget += batchSize;
     currentState.isBatchLoading = true;
 
@@ -1161,6 +1192,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === "csh:setFilter") {
     currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    currentState.sessionFilterMode = currentState.filterMode;
     if (!currentState.isActive) {
       sendResponse({ ok: true, stats: currentState.stats, reason: "inactive-until-scan" });
       return;
@@ -1176,6 +1208,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     currentState.isActive = false;
     currentState.isBatchLoading = false;
     currentState.batchTarget = 100;
+    currentState.filterMode = "match";
+    currentState.sessionFilterMode = "match";
     clearHighlights();
     currentState.stats = {
       scanned: 0,
@@ -1194,4 +1228,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 if (canRun()) {
   setupObserver();
   setupInteractionHooks();
+  maybeResumeSessionOnPageLoad();
 }
