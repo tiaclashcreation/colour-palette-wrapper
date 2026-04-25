@@ -8,40 +8,30 @@
   </head>
   <body>
     <main class="container">
-      <h1>Colour Season</h1>
-      <label for="seasonSelect">Your season</label>
-      <select id="seasonSelect"></select>
+      <header class="header">
+        <p class="eyebrow">Colour Season Helper</p>
+        <h1>Find Your Best Matches</h1>
+      </header>
 
-      <section class="actions">
-        <button id="scanButton">Scan page</button>
-        <button id="loadNextButton">Load next 100</button>
-        <button id="clearButton" class="secondary">Clear highlights</button>
+      <section class="card">
+        <label for="seasonSelect">Your season</label>
+        <select id="seasonSelect"></select>
       </section>
 
-      <section class="filter-modes">
+      <section class="card actions">
+        <button id="scanButton">Scan first 100</button>
+        <button id="clearButton" class="ghost">Clear</button>
+      </section>
+
+      <section class="card filter-modes">
         <h2>Filter mode</h2>
         <div class="mode-buttons">
-          <button id="modeMatchButton" class="secondary mode-button">Show matches only</button>
-          <button id="modeAllButton" class="secondary mode-button">Show all</button>
+          <button id="modeMatchButton" class="mode-button">Matches only</button>
+          <button id="modeAllButton" class="mode-button">Show all</button>
         </div>
       </section>
 
-      <section class="stats">
-        <h2>Results</h2>
-        <ul>
-          <li>Scanned: <strong id="statScanned">0</strong></li>
-          <li>Parsed: <strong id="statParsed">0</strong></li>
-          <li>Unparsed: <strong id="statUnparsed">0</strong></li>
-          <li>Untracked: <strong id="statUntracked">0</strong></li>
-          <li>Match: <strong id="statMatch">0</strong></li>
-          <li>No match: <strong id="statNoMatch">0</strong></li>
-        </ul>
-      </section>
       <p id="statusText" class="status">Ready</p>
-      <section class="debug">
-        <h2>Debug</h2>
-        <pre id="debugLog" class="debug-log">No debug events yet.</pre>
-      </section>
     </main>
     <script type="module" src="./index.js"></script>
   </body>

@@ -3,43 +3,114 @@ import { getUserPreferences, setUserPreferences } from "../storage/user-preferen
 
 const seasonSelect = document.getElementById("seasonSelect");
 const scanButton = document.getElementById("scanButton");
-const loadNextButton = document.getElementById("loadNextButton");
 const clearButton = document.getElementById("clearButton");
 const modeMatchButton = document.getElementById("modeMatchButton");
 const modeAllButton = document.getElementById("modeAllButton");
 const statusText = document.getElementById("statusText");
-const debugLog = document.getElementById("debugLog");
-
-const statScanned = document.getElementById("statScanned");
-const statParsed = document.getElementById("statParsed");
-const statUnparsed = document.getElementById("statUnparsed");
-const statUntracked = document.getElementById("statUntracked");
-const statMatch = document.getElementById("statMatch");
-const statNoMatch = document.getElementById("statNoMatch");
-const debugEntries = [];
 let currentFilterMode = "match";
+
+const SEASON_THEMES = {
+  warmSpring: {
+    accent: "#e0725f",
+    accentHover: "#cc604e",
+    softBg: "#f8ece8",
+    softBgHover: "#f3e3dd",
+    popupBg: "#fdf7f4"
+  },
+  clearSpring: {
+    accent: "#22aeb5",
+    accentHover: "#18969d",
+    softBg: "#e9f7f8",
+    softBgHover: "#ddf1f3",
+    popupBg: "#f4fcfd"
+  },
+  lightSpring: {
+    accent: "#e7a96e",
+    accentHover: "#d59253",
+    softBg: "#faf3e7",
+    softBgHover: "#f5ebdb",
+    popupBg: "#fffaf2"
+  },
+  trueSummer: {
+    accent: "#7b88c3",
+    accentHover: "#6977b1",
+    softBg: "#eef0fb",
+    softBgHover: "#e3e6f7",
+    popupBg: "#f7f8ff"
+  },
+  softAutumn: {
+    accent: "#8f8a57",
+    accentHover: "#7d7848",
+    softBg: "#f3f0e4",
+    softBgHover: "#ece7d7",
+    popupBg: "#faf8f1"
+  },
+  deepAutumn: {
+    accent: "#865637",
+    accentHover: "#73482f",
+    softBg: "#f4ece7",
+    softBgHover: "#ebdfd6",
+    popupBg: "#faf6f3"
+  },
+  trueAutumn: {
+    accent: "#a1623f",
+    accentHover: "#8d5334",
+    softBg: "#f6ede7",
+    softBgHover: "#efe2d9",
+    popupBg: "#fcf7f3"
+  },
+  coolSummer: {
+    accent: "#8b74b3",
+    accentHover: "#7a639f",
+    softBg: "#f1edf7",
+    softBgHover: "#e8e0f3",
+    popupBg: "#f9f7fc"
+  },
+  lightSummer: {
+    accent: "#7ca6bf",
+    accentHover: "#6b95ad",
+    softBg: "#ebf3f8",
+    softBgHover: "#dfecf4",
+    popupBg: "#f6fbff"
+  },
+  brightWinter: {
+    accent: "#2a5dd5",
+    accentHover: "#214eb7",
+    softBg: "#e9effd",
+    softBgHover: "#dce6fb",
+    popupBg: "#f5f8ff"
+  },
+  trueWinter: {
+    accent: "#3d4fa6",
+    accentHover: "#33448f",
+    softBg: "#eaedf9",
+    softBgHover: "#dde3f4",
+    popupBg: "#f4f6fd"
+  },
+  deepWinter: {
+    accent: "#4b4f72",
+    accentHover: "#3f4261",
+    softBg: "#ececf3",
+    softBgHover: "#e0e0eb",
+    popupBg: "#f6f6fa"
+  }
+};
+
+function applySeasonTheme(season) {
+  const theme = SEASON_THEMES[season] ?? SEASON_THEMES[DEFAULT_SEASON];
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty("--popup-bg", theme.popupBg);
+  rootStyle.setProperty("--accent", theme.accent);
+  rootStyle.setProperty("--accent-hover", theme.accentHover);
+  rootStyle.setProperty("--soft-bg", theme.softBg);
+  rootStyle.setProperty("--soft-bg-hover", theme.softBgHover);
+}
 
 function normalizeFilterMode(mode) {
   if (mode === "all") {
     return "all";
   }
   return "match";
-}
-
-function pushDebug(label, value) {
-  const timestamp = new Date().toLocaleTimeString();
-  const payload =
-    typeof value === "string"
-      ? value
-      : value === undefined
-        ? ""
-        : JSON.stringify(value);
-  const line = `[${timestamp}] ${label}${payload ? `: ${payload}` : ""}`;
-  debugEntries.unshift(line);
-  if (debugEntries.length > 12) {
-    debugEntries.pop();
-  }
-  debugLog.textContent = debugEntries.join("\n");
 }
 
 function renderSeasons() {
@@ -59,60 +130,37 @@ function setFilterModeUi(mode) {
 }
 
 function applyStats(stats) {
-  statScanned.textContent = String(stats.scanned ?? 0);
-  statParsed.textContent = String(stats.parsed ?? 0);
-  statUnparsed.textContent = String(stats.unparsed ?? 0);
-  statUntracked.textContent = String(stats.untracked ?? 0);
-  statMatch.textContent = String(stats.match ?? 0);
-  statNoMatch.textContent = String(stats.noMatch ?? 0);
-  if (stats.unparsedReasons && Object.keys(stats.unparsedReasons).length > 0) {
-    pushDebug("Unparsed reasons", stats.unparsedReasons);
-  }
+  void stats;
 }
 
 async function getActiveTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  pushDebug("Active tab", {
-    id: tab?.id ?? null,
-    url: tab?.url ?? null
-  });
   return tab ?? null;
 }
 
 async function injectContentScript(tabId) {
-  pushDebug("Injecting content script", { tabId });
   await chrome.scripting.executeScript({
     target: { tabId },
     files: ["src/content/content-script.js"]
   });
-  pushDebug("Inject complete", { tabId });
 }
 
 async function sendToContent(message) {
   const tab = await getActiveTabId();
   const tabId = tab?.id;
   if (!tabId) {
-    pushDebug("sendToContent", "No active tab");
     return { ok: false, reason: "no-active-tab" };
   }
   try {
-    pushDebug("sendMessage", { tabId, type: message.type });
-    const response = await chrome.tabs.sendMessage(tabId, message);
-    pushDebug("message response", response ?? "undefined");
-    return response;
+    return await chrome.tabs.sendMessage(tabId, message);
   } catch (error) {
     const errorMessage = error?.message ?? "unknown error";
-    pushDebug("sendMessage error", errorMessage);
     const isMissingReceiver = errorMessage.includes("Receiving end does not exist");
     if (isMissingReceiver) {
       try {
         await injectContentScript(tabId);
-        pushDebug("Retry sendMessage", { tabId, type: message.type });
-        const retryResponse = await chrome.tabs.sendMessage(tabId, message);
-        pushDebug("retry response", retryResponse ?? "undefined");
-        return retryResponse;
+        return await chrome.tabs.sendMessage(tabId, message);
       } catch (retryError) {
-        pushDebug("Retry failed", retryError?.message ?? "unknown retry error");
         return {
           ok: false,
           reason: "content-unavailable",
@@ -129,11 +177,10 @@ function setStatus(text) {
 }
 
 async function initialize() {
-  pushDebug("Popup", "initialize start");
   renderSeasons();
   const preferences = await getUserPreferences();
-  pushDebug("Preferences loaded", preferences);
   seasonSelect.value = preferences.season ?? DEFAULT_SEASON;
+  applySeasonTheme(seasonSelect.value);
   setFilterModeUi(preferences.filterMode ?? "match");
 
   const activeTab = await getActiveTabId();
@@ -141,11 +188,9 @@ async function initialize() {
     type: "csh:getStats",
     payload: { tabId: activeTab?.id ?? null, url: activeTab?.url ?? null }
   });
-  pushDebug("Background stats response", statsResponse ?? "undefined");
   if (statsResponse?.ok) {
     applyStats(statsResponse.stats);
   }
-  pushDebug("Popup", "initialize complete");
 }
 
 scanButton.addEventListener("click", async () => {
@@ -154,40 +199,16 @@ scanButton.addEventListener("click", async () => {
   await setUserPreferences({ season, filterMode });
 
   setStatus("Loading first 100...");
-  pushDebug("Scan click payload", { season, filterMode, batchSize: 100 });
   const response = await sendToContent({
     type: "csh:scanBatch",
     payload: { season, filterMode, batchSize: 100 }
   });
   if (!response?.ok) {
-    pushDebug("Scan failed", response ?? "empty response");
     setStatus("Could not scan this page.");
     return;
   }
   applyStats(response.stats);
-  pushDebug("Scan success stats", response.stats);
   setStatus("Batch scan complete");
-});
-
-loadNextButton.addEventListener("click", async () => {
-  const season = seasonSelect.value;
-  const filterMode = currentFilterMode;
-  await setUserPreferences({ season, filterMode });
-
-  setStatus("Loading next 100...");
-  pushDebug("Load next payload", { season, filterMode, batchSize: 100 });
-  const response = await sendToContent({
-    type: "csh:loadNextBatch",
-    payload: { season, filterMode, batchSize: 100 }
-  });
-  if (!response?.ok) {
-    pushDebug("Load next failed", response ?? "empty response");
-    setStatus("Could not load next batch.");
-    return;
-  }
-  applyStats(response.stats);
-  pushDebug("Load next success stats", response.stats);
-  setStatus("Next batch complete");
 });
 
 clearButton.addEventListener("click", async () => {
@@ -195,18 +216,16 @@ clearButton.addEventListener("click", async () => {
   const response = await sendToContent({ type: "csh:clear" });
   if (response?.ok) {
     applyStats(response.stats);
-    pushDebug("Clear success", response.stats);
     setStatus("Highlights cleared");
   } else {
-    pushDebug("Clear failed", response ?? "empty response");
     setStatus("Nothing to clear");
   }
 });
 
 seasonSelect.addEventListener("change", async () => {
   const season = seasonSelect.value;
+  applySeasonTheme(season);
   await setUserPreferences({ season });
-  pushDebug("Season updated", season);
 });
 
 async function updateFilterMode(mode) {
@@ -219,10 +238,7 @@ async function updateFilterMode(mode) {
   });
   if (response?.ok) {
     applyStats(response.stats);
-    pushDebug("Filter mode update success", { mode: normalizedMode, stats: response.stats });
     setStatus("Filter mode updated");
-  } else {
-    pushDebug("Filter mode update failed", response ?? "empty response");
   }
 }
 
