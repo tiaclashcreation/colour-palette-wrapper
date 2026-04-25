@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Colour Season Shopping Helper",
+  "description": "Highlights clothing items that match your colour season palette.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.asos.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Colour Season Helper",
+    "default_popup": "src/popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.asos.com/*"
+      ],
+      "js": [
+        "src/content/content-script.js"
+      ],
+      "css": [
+        "src/content/content-style.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

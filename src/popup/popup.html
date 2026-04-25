@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colour Season Helper</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Colour Season</h1>
+      <label for="seasonSelect">Your season</label>
+      <select id="seasonSelect"></select>
+
+      <section class="actions">
+        <button id="scanButton">Scan page</button>
+        <button id="clearButton" class="secondary">Clear highlights</button>
+      </section>
+
+      <label class="toggle">
+        <input type="checkbox" id="onlyMatchesToggle" />
+        <span>Show only matches</span>
+      </label>
+
+      <section class="stats">
+        <h2>Results</h2>
+        <ul>
+          <li>Scanned: <strong id="statScanned">0</strong></li>
+          <li>Strong: <strong id="statStrong">0</strong></li>
+          <li>Possible: <strong id="statPossible">0</strong></li>
+          <li>No match: <strong id="statNoMatch">0</strong></li>
+        </ul>
+      </section>
+      <p id="statusText" class="status">Ready</p>
+      <section class="debug">
+        <h2>Debug</h2>
+        <pre id="debugLog" class="debug-log">No debug events yet.</pre>
+      </section>
+    </main>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

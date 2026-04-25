@@ -1,0 +1,47 @@
+[data-csh-status] {
+  position: relative;
+  outline: 2px solid transparent;
+  border-radius: 8px;
+}
+
+[data-csh-status="Strong Match"] {
+  outline-color: #1f9f53;
+}
+
+[data-csh-status="Possible Match"] {
+  outline-color: #f0a000;
+}
+
+[data-csh-status="Not Match"] {
+  outline-color: #8c8c8c;
+}
+
+.csh-badge {
+  position: absolute;
+  z-index: 9999;
+  top: 6px;
+  left: 6px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #4a4a4a;
+  pointer-events: none;
+}
+
+.csh-badge[data-label="Strong Match"] {
+  background: #1f9f53;
+}
+
+.csh-badge[data-label="Possible Match"] {
+  background: #e69500;
+}
+
+.csh-badge[data-label="Not Match"] {
+  background: #696969;
+}
+
+[data-csh-hidden="true"] {
+  display: none !important;
+}

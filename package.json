@@ -1,0 +1,29 @@
+{
+  "name": "colour-palette-wrapper",
+  "version": "1.0.0",
+  "description": "Extension to put on google to filter a website for your colour palette",
+  "main": "manifest.json",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "check": "npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiaclashcreation/colour-palette-wrapper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/tiaclashcreation/colour-palette-wrapper/issues"
+  },
+  "homepage": "https://github.com/tiaclashcreation/colour-palette-wrapper#readme",
+  "devDependencies": {
+    "jsdom": "^27.0.1"
+  }
+}
