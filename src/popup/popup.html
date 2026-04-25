@@ -14,13 +14,18 @@
 
       <section class="actions">
         <button id="scanButton">Scan page</button>
+        <button id="loadNextButton">Load next 100</button>
         <button id="clearButton" class="secondary">Clear highlights</button>
       </section>
 
-      <label class="toggle">
-        <input type="checkbox" id="onlyMatchesToggle" />
-        <span>Show only matches</span>
-      </label>
+      <section class="filter-modes">
+        <h2>Filter mode</h2>
+        <div class="mode-buttons">
+          <button id="modeStrongButton" class="secondary mode-button">Show strong only</button>
+          <button id="modePossibleButton" class="secondary mode-button">Show possible only</button>
+          <button id="modeBothButton" class="secondary mode-button">Show both</button>
+        </div>
+      </section>
 
       <section class="stats">
         <h2>Results</h2>

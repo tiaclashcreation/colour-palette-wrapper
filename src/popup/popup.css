@@ -78,6 +78,20 @@ button.secondary {
   color: #5f5f5f;
 }
 
+.filter-modes {
+  margin-top: 10px;
+}
+
+.mode-buttons {
+  display: grid;
+  gap: 6px;
+}
+
+.mode-button.active {
+  background: #3d2cff;
+  color: #ffffff;
+}
+
 .debug {
   margin-top: 12px;
 }

@@ -3,8 +3,11 @@ import { getUserPreferences, setUserPreferences } from "../storage/user-preferen
 
 const seasonSelect = document.getElementById("seasonSelect");
 const scanButton = document.getElementById("scanButton");
+const loadNextButton = document.getElementById("loadNextButton");
 const clearButton = document.getElementById("clearButton");
-const onlyMatchesToggle = document.getElementById("onlyMatchesToggle");
+const modeStrongButton = document.getElementById("modeStrongButton");
+const modePossibleButton = document.getElementById("modePossibleButton");
+const modeBothButton = document.getElementById("modeBothButton");
 const statusText = document.getElementById("statusText");
 const debugLog = document.getElementById("debugLog");
 
@@ -16,6 +19,7 @@ const statStrong = document.getElementById("statStrong");
 const statPossible = document.getElementById("statPossible");
 const statNoMatch = document.getElementById("statNoMatch");
 const debugEntries = [];
+let currentFilterMode = "both";
 
 function pushDebug(label, value) {
   const timestamp = new Date().toLocaleTimeString();
@@ -40,6 +44,13 @@ function renderSeasons() {
     option.textContent = label;
     seasonSelect.appendChild(option);
   }
+}
+
+function setFilterModeUi(mode) {
+  currentFilterMode = mode;
+  modeStrongButton.classList.toggle("active", mode === "strong");
+  modePossibleButton.classList.toggle("active", mode === "possible");
+  modeBothButton.classList.toggle("active", mode === "both");
 }
 
 function applyStats(stats) {
@@ -119,7 +130,7 @@ async function initialize() {
   const preferences = await getUserPreferences();
   pushDebug("Preferences loaded", preferences);
   seasonSelect.value = preferences.season ?? DEFAULT_SEASON;
-  onlyMatchesToggle.checked = Boolean(preferences.onlyMatches);
+  setFilterModeUi(preferences.filterMode ?? "both");
 
   const statsResponse = await chrome.runtime.sendMessage({ type: "csh:getStats" });
   pushDebug("Background stats response", statsResponse ?? "undefined");
@@ -131,14 +142,14 @@ async function initialize() {
 
 scanButton.addEventListener("click", async () => {
   const season = seasonSelect.value;
-  const onlyMatches = onlyMatchesToggle.checked;
-  await setUserPreferences({ season, onlyMatches });
+  const filterMode = currentFilterMode;
+  await setUserPreferences({ season, filterMode });
 
-  setStatus("Scanning...");
-  pushDebug("Scan click payload", { season, onlyMatches });
+  setStatus("Loading first 100...");
+  pushDebug("Scan click payload", { season, filterMode, batchSize: 100 });
   const response = await sendToContent({
-    type: "csh:scan",
-    payload: { season, onlyMatches }
+    type: "csh:scanBatch",
+    payload: { season, filterMode, batchSize: 100 }
   });
   if (!response?.ok) {
     pushDebug("Scan failed", response ?? "empty response");
@@ -147,7 +158,28 @@ scanButton.addEventListener("click", async () => {
   }
   applyStats(response.stats);
   pushDebug("Scan success stats", response.stats);
-  setStatus("Scan complete");
+  setStatus("Batch scan complete");
+});
+
+loadNextButton.addEventListener("click", async () => {
+  const season = seasonSelect.value;
+  const filterMode = currentFilterMode;
+  await setUserPreferences({ season, filterMode });
+
+  setStatus("Loading next 100...");
+  pushDebug("Load next payload", { season, filterMode, batchSize: 100 });
+  const response = await sendToContent({
+    type: "csh:loadNextBatch",
+    payload: { season, filterMode, batchSize: 100 }
+  });
+  if (!response?.ok) {
+    pushDebug("Load next failed", response ?? "empty response");
+    setStatus("Could not load next batch.");
+    return;
+  }
+  applyStats(response.stats);
+  pushDebug("Load next success stats", response.stats);
+  setStatus("Next batch complete");
 });
 
 clearButton.addEventListener("click", async () => {
@@ -169,20 +201,24 @@ seasonSelect.addEventListener("change", async () => {
   pushDebug("Season updated", season);
 });
 
-onlyMatchesToggle.addEventListener("change", async () => {
-  const onlyMatches = onlyMatchesToggle.checked;
-  await setUserPreferences({ onlyMatches });
+async function updateFilterMode(mode) {
+  setFilterModeUi(mode);
+  await setUserPreferences({ filterMode: mode });
   const response = await sendToContent({
     type: "csh:setFilter",
-    payload: { onlyMatches }
+    payload: { filterMode: mode }
   });
   if (response?.ok) {
     applyStats(response.stats);
-    pushDebug("Filter update success", response.stats);
-    setStatus("Filter updated");
+    pushDebug("Filter mode update success", { mode, stats: response.stats });
+    setStatus("Filter mode updated");
   } else {
-    pushDebug("Filter update failed", response ?? "empty response");
+    pushDebug("Filter mode update failed", response ?? "empty response");
   }
-});
+}
+
+modeStrongButton.addEventListener("click", async () => updateFilterMode("strong"));
+modePossibleButton.addEventListener("click", async () => updateFilterMode("possible"));
+modeBothButton.addEventListener("click", async () => updateFilterMode("both"));
 
 initialize();

@@ -670,10 +670,14 @@ async function detectDominantColorTokens(imageUrl) {
 
 let currentState = {
   season: DEFAULT_SEASON,
-  onlyMatches: false,
+  filterMode: "both",
+  isActive: false,
+  isBatchLoading: false,
+  batchTarget: 100,
   stats: { scanned: 0, strong: 0, possible: 0, noMatch: 0, parsed: 0, unparsed: 0, untracked: 0, unparsedReasons: {} }
 };
 let observer;
+let interactionHooksBound = false;
 
 function canRun() {
   return window.location.hostname.includes("asos.com");
@@ -700,6 +704,19 @@ function clearCardDecorations(cardNode) {
   if (badge) {
     badge.remove();
   }
+}
+
+function shouldHideByFilterMode(label) {
+  if (currentState.filterMode === "strong") {
+    return label !== "Strong Match";
+  }
+  if (currentState.filterMode === "possible") {
+    return label !== "Possible Match";
+  }
+  if (currentState.filterMode === "both") {
+    return label === "Not Match";
+  }
+  return false;
 }
 
 function explainParseFailure(cardNode) {
@@ -783,6 +800,9 @@ async function matchProduct(product, season) {
 }
 
 async function scanAndRender() {
+  if (!currentState.isActive) {
+    return currentState.stats;
+  }
   if (!canRun()) {
     return { ...currentState.stats, debug: { reason: "unsupported-site" } };
   }
@@ -810,7 +830,7 @@ async function scanAndRender() {
     results.push({ product, match });
 
     card.dataset.cshStatus = match.label;
-    const hide = currentState.onlyMatches && match.label === "Not Match";
+    const hide = shouldHideByFilterMode(match.label);
     card.dataset.cshHidden = hide ? "true" : "false";
     ensureBadge(card, match.label, match.confidence);
   }
@@ -835,7 +855,7 @@ async function scanAndRender() {
     const match = await matchProduct(candidateProduct, currentState.season);
     results.push({ product: candidateProduct, match });
     candidate.dataset.cshStatus = match.label;
-    const hide = currentState.onlyMatches && match.label === "Not Match";
+    const hide = shouldHideByFilterMode(match.label);
     candidate.dataset.cshHidden = hide ? "true" : "false";
     ensureBadge(candidate, match.label, match.confidence);
   }
@@ -860,6 +880,65 @@ async function scanAndRender() {
   };
 }
 
+function sortCardsByMatchScore(results) {
+  const rank = {
+    "Strong Match": 0,
+    "Possible Match": 1,
+    "Not Match": 2
+  };
+
+  const byParent = new Map();
+  for (const entry of results) {
+    const node = entry.product.cardNode;
+    const parent = getSortGroupParent(node);
+    if (!parent || !node) {
+      continue;
+    }
+    const sortableNode = getSortableNode(node, parent);
+    const list = byParent.get(parent) ?? [];
+    list.push({ entry, sortableNode });
+    byParent.set(parent, list);
+  }
+
+  for (const [parent, list] of byParent.entries()) {
+    list.sort((a, b) => {
+      const rankDiff = rank[a.entry.match.label] - rank[b.entry.match.label];
+      if (rankDiff !== 0) {
+        return rankDiff;
+      }
+      return b.entry.match.score - a.entry.match.score;
+    });
+    for (const item of list) {
+      parent.appendChild(item.sortableNode);
+    }
+  }
+}
+
+function getSortGroupParent(node) {
+  if (!node) {
+    return null;
+  }
+  const explicit =
+    node.closest('[data-auto-id="productList"]') ??
+    node.closest('[data-testid*="product-list"]') ??
+    node.closest('[data-testid*="product-grid"]') ??
+    node.closest('[role="list"]') ??
+    node.closest("ul") ??
+    node.closest("ol");
+  if (explicit) {
+    return explicit;
+  }
+  return node.parentElement;
+}
+
+function getSortableNode(node, parent) {
+  let current = node;
+  while (current.parentElement && current.parentElement !== parent) {
+    current = current.parentElement;
+  }
+  return current;
+}
+
 function clearHighlights() {
   const cards = getProductCards(document);
   for (const card of cards) {
@@ -869,11 +948,136 @@ function clearHighlights() {
 
 let debouncedTimer;
 function scheduleRescan() {
+  if (!currentState.isActive || currentState.isBatchLoading) {
+    return;
+  }
   clearTimeout(debouncedTimer);
   debouncedTimer = setTimeout(async () => {
+    if (!currentState.isActive || currentState.isBatchLoading) {
+      return;
+    }
     await scanAndRender();
     emitStats();
   }, 300);
+}
+
+function scheduleDelayedRescans(delays = [300, 1000, 2500]) {
+  for (const delay of delays) {
+    setTimeout(() => {
+      scheduleRescan();
+    }, delay);
+  }
+}
+
+function findLoadMoreTrigger() {
+  const candidates = [...document.querySelectorAll("button, a, [role='button']")];
+  for (const candidate of candidates) {
+    const text = (candidate.textContent ?? "").toLowerCase().trim();
+    const matches =
+      text.includes("see more") ||
+      text.includes("show more") ||
+      text.includes("load more") ||
+      text.includes("view more");
+    if (!matches) {
+      continue;
+    }
+    if (candidate instanceof HTMLButtonElement && candidate.disabled) {
+      continue;
+    }
+    if (candidate.getAttribute("aria-disabled") === "true") {
+      continue;
+    }
+    return candidate;
+  }
+  return null;
+}
+
+function getCurrentItemCount() {
+  const cards = getProductCards(document);
+  const candidates = getProductLikeCandidates(document);
+  return new Set([...cards, ...candidates]).size;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForItemCountIncrease(previousCount, timeoutMs = 7000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await sleep(250);
+    const currentCount = getCurrentItemCount();
+    if (currentCount > previousCount) {
+      return currentCount;
+    }
+  }
+  return getCurrentItemCount();
+}
+
+async function loadBatchItems(targetCount) {
+  let clicks = 0;
+  let currentCount = getCurrentItemCount();
+  while (currentCount < targetCount && clicks < 40) {
+    const trigger = findLoadMoreTrigger();
+    if (!trigger) {
+      break;
+    }
+    trigger.click();
+    clicks += 1;
+    const nextCount = await waitForItemCountIncrease(currentCount);
+    if (nextCount <= currentCount) {
+      break;
+    }
+    currentCount = nextCount;
+  }
+  return {
+    clicks,
+    currentCount,
+    reachedTarget: currentCount >= targetCount
+  };
+}
+
+function setupInteractionHooks() {
+  if (interactionHooksBound) {
+    return;
+  }
+  interactionHooksBound = true;
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const trigger = target.closest("button, a, [role='button']");
+      if (!trigger) {
+        return;
+      }
+      const text = (trigger.textContent ?? "").toLowerCase().trim();
+      const likelyLoadMore =
+        text.includes("see more") ||
+        text.includes("show more") ||
+        text.includes("load more") ||
+        text.includes("view more");
+      if (likelyLoadMore) {
+        scheduleDelayedRescans();
+      }
+    },
+    true
+  );
+
+  let scrollTimer;
+  window.addEventListener(
+    "scroll",
+    () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        scheduleRescan();
+      }, 250);
+    },
+    { passive: true }
+  );
 }
 
 function emitStats() {
@@ -900,8 +1104,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === "csh:scan") {
+    currentState.isActive = true;
     currentState.season = message.payload.season ?? currentState.season;
-    currentState.onlyMatches = Boolean(message.payload.onlyMatches);
+    currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
     scanAndRender().then((stats) => {
       emitStats();
       sendResponse({ ok: true, stats });
@@ -909,8 +1114,58 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "csh:scanBatch") {
+    currentState.isActive = true;
+    currentState.season = message.payload.season ?? currentState.season;
+    currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    const batchSize = Number(message.payload.batchSize) || 100;
+    currentState.batchTarget = batchSize;
+    currentState.isBatchLoading = true;
+
+    loadBatchItems(currentState.batchTarget)
+      .then(async (loadInfo) => {
+        currentState.isBatchLoading = false;
+        const stats = await scanAndRender();
+        emitStats();
+        sendResponse({ ok: true, stats: { ...stats, debug: { ...(stats.debug ?? {}), loadInfo } } });
+      })
+      .catch((error) => {
+        currentState.isBatchLoading = false;
+        sendResponse({ ok: false, reason: "batch-load-failed", error: error?.message ?? "unknown-error" });
+      });
+    return true;
+  }
+
+  if (message.type === "csh:loadNextBatch") {
+    const batchSize = Number(message.payload.batchSize) || 100;
+    if (!currentState.isActive) {
+      currentState.isActive = true;
+    }
+    currentState.season = message.payload.season ?? currentState.season;
+    currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    currentState.batchTarget += batchSize;
+    currentState.isBatchLoading = true;
+
+    loadBatchItems(currentState.batchTarget)
+      .then(async (loadInfo) => {
+        currentState.isBatchLoading = false;
+        const stats = await scanAndRender();
+        emitStats();
+        sendResponse({ ok: true, stats: { ...stats, debug: { ...(stats.debug ?? {}), loadInfo } } });
+      })
+      .catch((error) => {
+        currentState.isBatchLoading = false;
+        sendResponse({ ok: false, reason: "batch-load-failed", error: error?.message ?? "unknown-error" });
+      });
+    return true;
+  }
+
   if (message.type === "csh:setFilter") {
-    currentState.onlyMatches = Boolean(message.payload.onlyMatches);
+    currentState.filterMode = message.payload.filterMode ?? currentState.filterMode;
+    if (!currentState.isActive) {
+      sendResponse({ ok: true, stats: currentState.stats, reason: "inactive-until-scan" });
+      return;
+    }
     scanAndRender().then((stats) => {
       emitStats();
       sendResponse({ ok: true, stats });
@@ -919,6 +1174,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === "csh:clear") {
+    currentState.isActive = false;
+    currentState.isBatchLoading = false;
+    currentState.batchTarget = 100;
     clearHighlights();
     currentState.stats = {
       scanned: 0,
@@ -937,4 +1195,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 if (canRun()) {
   setupObserver();
+  setupInteractionHooks();
 }

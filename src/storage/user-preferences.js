@@ -4,12 +4,14 @@ const KEY = "colourSeasonSettings";
 
 export async function getUserPreferences() {
   const stored = await chrome.storage.sync.get(KEY);
-  return (
-    stored[KEY] ?? {
-      season: DEFAULT_SEASON,
-      onlyMatches: false
-    }
-  );
+  const defaults = {
+    season: DEFAULT_SEASON,
+    filterMode: "both"
+  };
+  return {
+    ...defaults,
+    ...(stored[KEY] ?? {})
+  };
 }
 
 export async function setUserPreferences(update) {
