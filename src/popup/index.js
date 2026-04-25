@@ -9,6 +9,9 @@ const statusText = document.getElementById("statusText");
 const debugLog = document.getElementById("debugLog");
 
 const statScanned = document.getElementById("statScanned");
+const statParsed = document.getElementById("statParsed");
+const statUnparsed = document.getElementById("statUnparsed");
+const statUntracked = document.getElementById("statUntracked");
 const statStrong = document.getElementById("statStrong");
 const statPossible = document.getElementById("statPossible");
 const statNoMatch = document.getElementById("statNoMatch");
@@ -41,9 +44,15 @@ function renderSeasons() {
 
 function applyStats(stats) {
   statScanned.textContent = String(stats.scanned ?? 0);
+  statParsed.textContent = String(stats.parsed ?? 0);
+  statUnparsed.textContent = String(stats.unparsed ?? 0);
+  statUntracked.textContent = String(stats.untracked ?? 0);
   statStrong.textContent = String(stats.strong ?? 0);
   statPossible.textContent = String(stats.possible ?? 0);
   statNoMatch.textContent = String(stats.noMatch ?? 0);
+  if (stats.unparsedReasons && Object.keys(stats.unparsedReasons).length > 0) {
+    pushDebug("Unparsed reasons", stats.unparsedReasons);
+  }
 }
 
 async function getActiveTabId() {

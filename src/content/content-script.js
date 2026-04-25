@@ -184,11 +184,35 @@ const PALETTE_SWATCHES = [
   { hex: "#000000", token: "black" },
   { hex: "#ffffff", token: "white" },
   { hex: "#7f7f7f", token: "cool-gray" },
-  { hex: "#7a5a3a", token: "camel" },
-  { hex: "#3f5f3f", token: "forest" },
-  { hex: "#2a5f8f", token: "soft-navy" },
-  { hex: "#ce6f61", token: "coral" },
-  { hex: "#8b2c3e", token: "burgundy" }
+  { hex: "#d8c3a5", token: "warm-beige" },
+  { hex: "#c19a6b", token: "camel" },
+  { hex: "#8b7d6b", token: "taupe" },
+  { hex: "#5a3a2e", token: "chocolate" },
+  { hex: "#2f5d3a", token: "forest" },
+  { hex: "#708238", token: "olive" },
+  { hex: "#8a9a5b", token: "moss" },
+  { hex: "#5f8a8b", token: "soft-teal" },
+  { hex: "#2f6f6d", token: "teal" },
+  { hex: "#445a7a", token: "soft-navy" },
+  { hex: "#8aa4d6", token: "cornflower" },
+  { hex: "#0066ff", token: "electric-blue" },
+  { hex: "#ff6f61", token: "coral" },
+  { hex: "#ffb07c", token: "peach" },
+  { hex: "#f6b3a6", token: "light-coral" },
+  { hex: "#b86b4b", token: "terracotta" },
+  { hex: "#b7410e", token: "rust" },
+  { hex: "#cc7722", token: "pumpkin" },
+  { hex: "#ffd23f", token: "sun-yellow" },
+  { hex: "#b08d3e", token: "mustard" },
+  { hex: "#b7d531", token: "lime" },
+  { hex: "#00a86b", token: "emerald" },
+  { hex: "#d69ab0", token: "cool-pink" },
+  { hex: "#c48793", token: "dusty-rose" },
+  { hex: "#d1007f", token: "fuchsia" },
+  { hex: "#c2185b", token: "magenta" },
+  { hex: "#6e1f3f", token: "burgundy" },
+  { hex: "#9b1b30", token: "cranberry" },
+  { hex: "#4b2e83", token: "royal-purple" }
 ];
 
 const imageCache = new Map();
@@ -277,7 +301,7 @@ function scoreItemForSeason(item, seasonKey) {
     }
     const warmth = inferWarmth(color);
     if ((warmth === "warm") !== palette.warm) {
-      warmPenalty += 4;
+      warmPenalty += 2;
     }
   }
 
@@ -289,6 +313,12 @@ function scoreItemForSeason(item, seasonKey) {
   score += computeContrastScore(tokenHexes, profile);
   score += computeDimensionalScore(tokenHexes, profile);
   score -= warmPenalty;
+
+  const colorSpaceOnly = computeColorSpaceScore(tokenHexes, profile);
+  if (matchedColors.length === 0 && colorSpaceOnly >= 14) {
+    // Rescue near-palette colors when metadata labels are vague.
+    score = Math.max(score, 50);
+  }
 
   if (matchedColors.length >= 2 && computeDimensionalScore(tokenHexes, profile) >= 12) {
     score += 8;
@@ -541,9 +571,50 @@ function loadImage(imageUrl) {
   });
 }
 
-async function detectDominantColorToken(imageUrl) {
+function rgbToHsv({ r, g, b }) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) {
+      h = ((gn - bn) / d) % 6;
+    } else if (max === gn) {
+      h = (bn - rn) / d + 2;
+    } else {
+      h = (rn - gn) / d + 4;
+    }
+    h *= 60;
+    if (h < 0) {
+      h += 360;
+    }
+  }
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+  return { h, s, v };
+}
+
+function foregroundLikely(rgb) {
+  const hsv = rgbToHsv(rgb);
+  // Ignore near-white/gray backgrounds and very dark noise.
+  if (hsv.v > 0.9 && hsv.s < 0.18) {
+    return false;
+  }
+  if (hsv.v < 0.12) {
+    return false;
+  }
+  if (hsv.s < 0.08) {
+    return false;
+  }
+  return true;
+}
+
+async function detectDominantColorTokens(imageUrl) {
   if (!imageUrl) {
-    return null;
+    return [];
   }
   if (imageCache.has(imageUrl)) {
     return imageCache.get(imageUrl);
@@ -558,38 +629,49 @@ async function detectDominantColorToken(imageUrl) {
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let count = 0;
+    const bins = new Map();
     for (let i = 0; i < data.length; i += 4) {
       if (data[i + 3] < 120) {
         continue;
       }
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
-      count += 1;
+      const rgb = { r: data[i], g: data[i + 1], b: data[i + 2] };
+      if (!foregroundLikely(rgb)) {
+        continue;
+      }
+      const key = `${Math.round(rgb.r / 24)}-${Math.round(rgb.g / 24)}-${Math.round(rgb.b / 24)}`;
+      const entry = bins.get(key) ?? { r: 0, g: 0, b: 0, count: 0 };
+      entry.r += rgb.r;
+      entry.g += rgb.g;
+      entry.b += rgb.b;
+      entry.count += 1;
+      bins.set(key, entry);
     }
-    if (count === 0) {
-      return null;
+    if (bins.size === 0) {
+      return [];
     }
-    const token = nearestToken({
-      r: Math.round(r / count),
-      g: Math.round(g / count),
-      b: Math.round(b / count)
-    });
-    imageCache.set(imageUrl, token);
-    return token;
+    const topBins = [...bins.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+    const tokens = [];
+    for (const bin of topBins) {
+      const token = nearestToken({
+        r: Math.round(bin.r / bin.count),
+        g: Math.round(bin.g / bin.count),
+        b: Math.round(bin.b / bin.count)
+      });
+      if (!tokens.includes(token)) {
+        tokens.push(token);
+      }
+    }
+    imageCache.set(imageUrl, tokens);
+    return tokens;
   } catch (_error) {
-    return null;
+    return [];
   }
 }
 
 let currentState = {
   season: DEFAULT_SEASON,
   onlyMatches: false,
-  stats: { scanned: 0, strong: 0, possible: 0, noMatch: 0 }
+  stats: { scanned: 0, strong: 0, possible: 0, noMatch: 0, parsed: 0, unparsed: 0, untracked: 0, unparsedReasons: {} }
 };
 let observer;
 
@@ -612,29 +694,92 @@ function ensureBadge(cardNode, label, confidence) {
 function clearCardDecorations(cardNode) {
   cardNode.removeAttribute("data-csh-status");
   cardNode.removeAttribute("data-csh-hidden");
+  cardNode.removeAttribute("data-csh-unparsed");
+  cardNode.removeAttribute("data-csh-untracked");
   const badge = cardNode.querySelector(".csh-badge");
   if (badge) {
     badge.remove();
   }
 }
 
+function explainParseFailure(cardNode) {
+  const linkNode = queryFirst(cardNode, SELECTORS.link);
+  if (!linkNode?.href) {
+    return "missing-link";
+  }
+  const titleNode = queryFirst(cardNode, SELECTORS.title);
+  const imageNode = queryFirst(cardNode, SELECTORS.image);
+  const linkText = linkNode?.textContent?.trim() ?? "";
+  const linkAria = linkNode?.getAttribute("aria-label")?.trim() ?? "";
+  const dataName = cardNode.getAttribute("data-product-name")?.trim() ?? "";
+  const imageAlt = imageNode?.alt?.trim() ?? "";
+  const title = titleNode?.textContent?.trim() || linkAria || dataName || imageAlt || linkText;
+  if (!title) {
+    return "missing-title";
+  }
+  const id = cardIdFromLink(linkNode.href) ?? title;
+  if (!id) {
+    return "missing-id";
+  }
+  return "unknown-parse-failure";
+}
+
+function markUnparsed(cardNode, reason) {
+  clearCardDecorations(cardNode);
+  cardNode.dataset.cshUnparsed = "true";
+  ensureBadge(cardNode, "Unparsed", reason);
+}
+
+function markUntracked(cardNode) {
+  clearCardDecorations(cardNode);
+  cardNode.dataset.cshUntracked = "true";
+  ensureBadge(cardNode, "Untracked", "product-like tile not captured by parser selectors");
+}
+
+function getProductLikeCandidates(documentRef = document) {
+  const roots = [];
+  const anchors = [...documentRef.querySelectorAll("a[href]")];
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
+      continue;
+    }
+    if (!anchor.querySelector("img")) {
+      continue;
+    }
+    const root = anchor.closest(
+      '[data-auto-id="productTile"], [data-testid*="product"], article, li, div'
+    );
+    if (!root) {
+      continue;
+    }
+    const text = root.textContent ?? "";
+    if (!/[£$€]\s?\d/.test(text) && !/\b(USD|EUR|GBP)\b/.test(text)) {
+      continue;
+    }
+    roots.push(root);
+  }
+  return [...new Set(roots)];
+}
+
 async function matchProduct(product, season) {
   const initial = scoreItemForSeason(product, season);
-  if (initial.confidence !== "low") {
+  if (initial.confidence === "high" && initial.score >= 60) {
     return initial;
   }
 
-  const fallbackToken = await detectDominantColorToken(product.imageUrl);
-  if (!fallbackToken) {
+  const fallbackTokens = await detectDominantColorTokens(product.imageUrl);
+  if (fallbackTokens.length === 0) {
     return initial;
   }
-  return scoreItemForSeason(
+  const augmented = scoreItemForSeason(
     {
       ...product,
-      colorHints: [...(product.colorHints ?? []), fallbackToken]
+      colorHints: [...(product.colorHints ?? []), ...fallbackTokens]
     },
     season
   );
+  return augmented.score >= initial.score ? augmented : initial;
 }
 
 async function scanAndRender() {
@@ -645,11 +790,22 @@ async function scanAndRender() {
   const cards = getProductCards(document);
   const productLinkCount = document.querySelectorAll('a[href*="/prd/"], a[href*="/product/"]').length;
   const results = [];
+  const seenProductIds = new Set();
+  const unparsedReasons = {};
+  let unparsed = 0;
+  let untracked = 0;
+  let recoveredFromUntracked = 0;
+  const trackedSet = new Set(cards);
   for (const card of cards) {
     const product = extractProductData(card);
     if (!product) {
+      const reason = explainParseFailure(card);
+      unparsedReasons[reason] = (unparsedReasons[reason] ?? 0) + 1;
+      unparsed += 1;
+      markUnparsed(card, reason);
       continue;
     }
+    seenProductIds.add(product.id);
     const match = await matchProduct(product, currentState.season);
     results.push({ product, match });
 
@@ -658,13 +814,48 @@ async function scanAndRender() {
     card.dataset.cshHidden = hide ? "true" : "false";
     ensureBadge(card, match.label, match.confidence);
   }
-  currentState.stats = summarizeResults(results);
+
+  const candidates = getProductLikeCandidates(document);
+  for (const candidate of candidates) {
+    if (trackedSet.has(candidate)) {
+      continue;
+    }
+    const candidateProduct = extractProductData(candidate);
+    if (!candidateProduct) {
+      untracked += 1;
+      markUntracked(candidate);
+      continue;
+    }
+    if (seenProductIds.has(candidateProduct.id)) {
+      continue;
+    }
+    seenProductIds.add(candidateProduct.id);
+    recoveredFromUntracked += 1;
+
+    const match = await matchProduct(candidateProduct, currentState.season);
+    results.push({ product: candidateProduct, match });
+    candidate.dataset.cshStatus = match.label;
+    const hide = currentState.onlyMatches && match.label === "Not Match";
+    candidate.dataset.cshHidden = hide ? "true" : "false";
+    ensureBadge(candidate, match.label, match.confidence);
+  }
+
+  currentState.stats = {
+    ...summarizeResults(results),
+    parsed: results.length,
+    unparsed,
+    untracked,
+    unparsedReasons
+  };
   return {
     ...currentState.stats,
     debug: {
       cardsFound: cards.length,
       productsParsed: results.length,
-      productLinksFound: productLinkCount
+      productLinksFound: productLinkCount,
+      productLikeCandidates: candidates.length,
+      untrackedCandidates: untracked,
+      recoveredFromUntracked
     }
   };
 }
@@ -729,7 +920,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === "csh:clear") {
     clearHighlights();
-    currentState.stats = { scanned: 0, strong: 0, possible: 0, noMatch: 0 };
+    currentState.stats = {
+      scanned: 0,
+      strong: 0,
+      possible: 0,
+      noMatch: 0,
+      parsed: 0,
+      unparsed: 0,
+      untracked: 0,
+      unparsedReasons: {}
+    };
     emitStats();
     sendResponse({ ok: true, stats: currentState.stats });
   }

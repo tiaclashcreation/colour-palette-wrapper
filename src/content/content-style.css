@@ -42,6 +42,24 @@
   background: #696969;
 }
 
+[data-csh-unparsed="true"] {
+  outline: 2px dashed #9a6b00;
+  border-radius: 8px;
+}
+
+.csh-badge[data-label="Unparsed"] {
+  background: #9a6b00;
+}
+
+[data-csh-untracked="true"] {
+  outline: 2px dotted #2d6cdf;
+  border-radius: 8px;
+}
+
+.csh-badge[data-label="Untracked"] {
+  background: #2d6cdf;
+}
+
 [data-csh-hidden="true"] {
   display: none !important;
 }
