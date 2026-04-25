@@ -1002,6 +1002,26 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function createViewportLock() {
+  const lockedX = window.scrollX;
+  const lockedY = window.scrollY;
+  const restore = () => {
+    if (window.scrollX !== lockedX || window.scrollY !== lockedY) {
+      window.scrollTo(lockedX, lockedY);
+    }
+  };
+  const intervalId = window.setInterval(restore, 80);
+  return {
+    lockedX,
+    lockedY,
+    restore,
+    release() {
+      window.clearInterval(intervalId);
+      restore();
+    }
+  };
+}
+
 async function waitForItemCountIncrease(previousCount, timeoutMs = 7000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -1015,26 +1035,33 @@ async function waitForItemCountIncrease(previousCount, timeoutMs = 7000) {
 }
 
 async function loadBatchItems(targetCount) {
+  const viewportLock = createViewportLock();
   let clicks = 0;
-  let currentCount = getCurrentItemCount();
-  while (currentCount < targetCount && clicks < 40) {
-    const trigger = findLoadMoreTrigger();
-    if (!trigger) {
-      break;
+  try {
+    let currentCount = getCurrentItemCount();
+    while (currentCount < targetCount && clicks < 40) {
+      const trigger = findLoadMoreTrigger();
+      if (!trigger) {
+        break;
+      }
+      trigger.click();
+      viewportLock.restore();
+      clicks += 1;
+      const nextCount = await waitForItemCountIncrease(currentCount);
+      if (nextCount <= currentCount) {
+        break;
+      }
+      currentCount = nextCount;
     }
-    trigger.click();
-    clicks += 1;
-    const nextCount = await waitForItemCountIncrease(currentCount);
-    if (nextCount <= currentCount) {
-      break;
-    }
-    currentCount = nextCount;
+    return {
+      clicks,
+      currentCount,
+      reachedTarget: currentCount >= targetCount,
+      viewportLockedAt: { x: viewportLock.lockedX, y: viewportLock.lockedY }
+    };
+  } finally {
+    viewportLock.release();
   }
-  return {
-    clicks,
-    currentCount,
-    reachedTarget: currentCount >= targetCount
-  };
 }
 
 function setupInteractionHooks() {
