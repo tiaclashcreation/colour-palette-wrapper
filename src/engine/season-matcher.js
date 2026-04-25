@@ -69,7 +69,19 @@ const TOKEN_HEX_MAP = {
   "bright-coral": "#ff5f6d",
   "clear-turquoise": "#00c2c7",
   "cool-white": "#f8fbff",
-  "deep-navy": "#1c2d4f"
+  "deep-navy": "#1c2d4f",
+  apricot: "#ffd1a9",
+  "light-coral": "#f6b3a6",
+  "light-turquoise": "#a9dfdd",
+  "butter-yellow": "#f9e7a3",
+  "light-camel": "#d8b38a",
+  mauve: "#b58aa0",
+  cornflower: "#8aa4d6",
+  raspberry: "#9f5f80",
+  pumpkin: "#cc7722",
+  teal: "#2f6f6d",
+  cobalt: "#0047ab",
+  magenta: "#c2185b"
 };
 
 export function scoreItemForSeason(item, seasonKey) {

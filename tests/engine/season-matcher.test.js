@@ -2,6 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { extractNormalizedColors } from "../../src/engine/color-normalizer.js";
 import { scoreItemForSeason, summarizeResults } from "../../src/engine/season-matcher.js";
+import { SEASON_LABELS, SEASON_PALETTES } from "../../src/engine/season-palettes.js";
+
+test("season labels include full 12-season model", () => {
+  assert.equal(Object.keys(SEASON_LABELS).length, 12);
+});
+
+test("adjacent seasons share bridge colors", () => {
+  assert.ok(SEASON_PALETTES.lightSpring.colors.includes("mint"));
+  assert.ok(SEASON_PALETTES.lightSummer.colors.includes("mint"));
+  assert.ok(SEASON_PALETTES.trueAutumn.colors.includes("rust"));
+  assert.ok(SEASON_PALETTES.deepAutumn.colors.includes("rust"));
+  assert.ok(SEASON_PALETTES.trueWinter.colors.includes("electric-blue"));
+  assert.ok(SEASON_PALETTES.brightWinter.colors.includes("electric-blue"));
+});
 
 test("extractNormalizedColors maps common synonyms", () => {
   const colors = extractNormalizedColors(["Ivory blazer in wine red"]);

@@ -3,42 +3,62 @@ const DEFAULT_SEASON = "warmSpring";
 const SEASON_PALETTES = {
   warmSpring: {
     warm: true,
-    colors: ["coral", "peach", "tomato", "turquoise", "warm-green", "camel", "ivory"],
+    colors: ["coral", "peach", "tomato", "turquoise", "warm-green", "sun-yellow", "camel", "ivory"],
     neutrals: ["cream", "warm-beige", "camel"]
   },
   clearSpring: {
     warm: true,
-    colors: ["bright-coral", "clear-turquoise", "lime", "sun-yellow", "bright-navy", "ivory"],
+    colors: ["bright-coral", "coral", "clear-turquoise", "turquoise", "lime", "sun-yellow", "bright-navy", "ivory"],
     neutrals: ["clear-navy", "warm-white", "camel"]
+  },
+  lightSpring: {
+    warm: true,
+    colors: ["apricot", "peach", "light-coral", "mint", "light-turquoise", "butter-yellow", "powder-blue", "light-pink"],
+    neutrals: ["cream", "warm-white", "light-camel"]
+  },
+  trueSummer: {
+    warm: false,
+    colors: ["rose", "dusty-rose", "mauve", "lavender", "cornflower", "soft-navy", "raspberry", "cool-pink"],
+    neutrals: ["soft-white", "cool-gray", "soft-navy"]
   },
   softAutumn: {
     warm: true,
-    colors: ["olive", "moss", "dusty-coral", "mustard", "terracotta", "soft-teal", "taupe"],
+    colors: ["olive", "moss", "dusty-coral", "mustard", "terracotta", "rust", "soft-teal", "teal", "taupe"],
     neutrals: ["taupe", "mushroom", "warm-gray", "cream"]
   },
   deepAutumn: {
     warm: true,
-    colors: ["forest", "rust", "aubergine", "deep-teal", "chocolate", "mustard", "brick-red"],
+    colors: ["forest", "rust", "aubergine", "deep-teal", "teal", "chocolate", "mustard", "brick-red", "pumpkin"],
     neutrals: ["dark-olive", "espresso", "camel", "warm-navy"]
+  },
+  trueAutumn: {
+    warm: true,
+    colors: ["rust", "pumpkin", "olive", "forest", "teal", "deep-teal", "mustard", "brick-red", "terracotta"],
+    neutrals: ["camel", "warm-beige", "chocolate", "espresso"]
   },
   coolSummer: {
     warm: false,
-    colors: ["dusty-rose", "slate-blue", "lavender", "cool-pink", "berry", "soft-navy"],
+    colors: ["dusty-rose", "rose", "mauve", "slate-blue", "lavender", "cool-pink", "berry", "soft-navy", "cornflower"],
     neutrals: ["cool-gray", "soft-white", "charcoal"]
   },
   lightSummer: {
     warm: false,
-    colors: ["powder-blue", "mint", "light-pink", "periwinkle", "light-lilac", "cool-aqua"],
+    colors: ["powder-blue", "mint", "light-pink", "periwinkle", "light-lilac", "cool-aqua", "cornflower"],
     neutrals: ["soft-white", "light-gray", "cool-beige"]
   },
   brightWinter: {
     warm: false,
-    colors: ["fuchsia", "electric-blue", "emerald", "true-red", "icy-pink", "black", "white"],
+    colors: ["fuchsia", "magenta", "electric-blue", "cobalt", "emerald", "true-red", "icy-pink", "royal-purple", "black", "white"],
     neutrals: ["black", "white", "icy-gray"]
+  },
+  trueWinter: {
+    warm: false,
+    colors: ["true-red", "cobalt", "electric-blue", "emerald", "magenta", "fuchsia", "royal-purple", "icy-pink", "white"],
+    neutrals: ["black", "white", "cool-gray", "charcoal"]
   },
   deepWinter: {
     warm: false,
-    colors: ["burgundy", "pine", "royal-purple", "ink-blue", "cranberry", "black", "white"],
+    colors: ["burgundy", "pine", "royal-purple", "ink-blue", "cranberry", "true-red", "black", "white"],
     neutrals: ["black", "charcoal", "cool-white", "deep-navy"]
   }
 };
@@ -46,11 +66,15 @@ const SEASON_PALETTES = {
 const SEASON_PROFILES = {
   warmSpring: { chroma: "bright", value: "light-medium", contrast: "medium", anchors: ["#ff6f61", "#ffb07c", "#27c2b8", "#74b72e", "#f5e6cc", "#c19a6b"] },
   clearSpring: { chroma: "bright", value: "medium", contrast: "high", anchors: ["#ff5f6d", "#00c2c7", "#d0e63a", "#ffd23f", "#1d3f72", "#f7f1dd"] },
+  lightSpring: { chroma: "soft", value: "light", contrast: "low", anchors: ["#ffd1a9", "#ffcf9c", "#f6b3a6", "#c8e3c2", "#a9dfdd", "#f9e7a3", "#f9f0dd"] },
+  trueSummer: { chroma: "soft", value: "light-medium", contrast: "low", anchors: ["#d4a6b1", "#b58aa0", "#b7a5d8", "#8aa4d6", "#445a7a", "#9f5f80", "#eef1f7"] },
   softAutumn: { chroma: "soft", value: "medium", contrast: "low", anchors: ["#7a8450", "#8a9a5b", "#c27a6a", "#b08d3e", "#b86b4b", "#7b8f87", "#8c7a6b"] },
   deepAutumn: { chroma: "medium", value: "deep", contrast: "medium", anchors: ["#2f5d3a", "#b7410e", "#4f2e4f", "#1f5c5b", "#5a3a2e", "#a67c2d", "#8f3b2e"] },
+  trueAutumn: { chroma: "medium", value: "medium-deep", contrast: "medium", anchors: ["#b35a2e", "#cc7722", "#708238", "#3e5f3a", "#2f6f6d", "#b08d3e", "#8f3b2e"] },
   coolSummer: { chroma: "soft", value: "light-medium", contrast: "low", anchors: ["#c48793", "#6b7a99", "#b7a5d8", "#d69ab0", "#8a5d7b", "#6c7480", "#f2f4f7"] },
   lightSummer: { chroma: "soft", value: "light", contrast: "low", anchors: ["#b0cfe8", "#b9d9c8", "#f3c6d3", "#b9b9e8", "#d7c7e8", "#b9e3e5", "#eff2f5"] },
   brightWinter: { chroma: "bright", value: "medium-deep", contrast: "high", anchors: ["#d1007f", "#0066ff", "#00a86b", "#d80032", "#f4d8ff", "#0b0b0f", "#ffffff"] },
+  trueWinter: { chroma: "bright", value: "deep", contrast: "high", anchors: ["#d80032", "#0047ab", "#008a5b", "#c2185b", "#4b2e83", "#f3dfff", "#ffffff"] },
   deepWinter: { chroma: "bright", value: "deep", contrast: "high", anchors: ["#6e1f3f", "#1f4d3a", "#4b2e83", "#1f2f5c", "#9b1b30", "#0b0b0f", "#f8fbff"] }
 };
 
@@ -69,7 +93,10 @@ const TOKEN_HEX_MAP = {
   cranberry: "#9b1b30", "dark-olive": "#4f5b31", espresso: "#3b2f2f", "warm-navy": "#2c3e5c",
   "clear-navy": "#214a7a", "warm-white": "#fff4df", lime: "#b7d531", "sun-yellow": "#ffd23f",
   "bright-navy": "#1d3f72", "bright-coral": "#ff5f6d", "clear-turquoise": "#00c2c7", "cool-white": "#f8fbff",
-  "deep-navy": "#1c2d4f"
+  "deep-navy": "#1c2d4f",
+  apricot: "#ffd1a9", "light-coral": "#f6b3a6", "light-turquoise": "#a9dfdd", "butter-yellow": "#f9e7a3",
+  "light-camel": "#d8b38a", mauve: "#b58aa0", cornflower: "#8aa4d6", raspberry: "#9f5f80",
+  pumpkin: "#cc7722", teal: "#2f6f6d", cobalt: "#0047ab", magenta: "#c2185b"
 };
 
 const COLOR_SYNONYMS = {
@@ -90,20 +117,29 @@ const COLOR_SYNONYMS = {
   green: "warm-green",
   teal: "soft-teal",
   turquoise: "turquoise",
+  lightturquoise: "light-turquoise",
   aqua: "cool-aqua",
   blue: "soft-navy",
+  cornflower: "cornflower",
   navy: "soft-navy",
   cobalt: "electric-blue",
   royalblue: "electric-blue",
   purple: "royal-purple",
+  magenta: "magenta",
   lilac: "light-lilac",
   lavender: "lavender",
+  mauve: "mauve",
   pink: "cool-pink",
+  raspberry: "raspberry",
   rose: "dusty-rose",
   fuchsia: "fuchsia",
   coral: "coral",
+  lightcoral: "light-coral",
+  apricot: "apricot",
   peach: "peach",
+  salmon: "light-coral",
   orange: "terracotta",
+  pumpkin: "pumpkin",
   rust: "rust",
   red: "true-red",
   burgundy: "burgundy",
@@ -194,7 +230,11 @@ function inferWarmth(colorToken) {
     "fuchsia",
     "cool-gray",
     "charcoal",
-    "cool-aqua"
+    "cool-aqua",
+    "cornflower",
+    "mauve",
+    "raspberry",
+    "magenta"
   ]);
   return coolTokens.has(colorToken) ? "cool" : "warm";
 }
